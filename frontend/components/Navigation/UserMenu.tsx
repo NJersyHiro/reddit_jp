@@ -43,11 +43,11 @@ export function UserMenu() {
   }
 
   return (
-    <Menu className="relative">
+    <Menu as="div" className="relative">
       <Menu.Button className="flex items-center gap-2 p-2 rounded-md hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors">
         <UserCircleIcon className="w-6 h-6 text-gray-600 dark:text-gray-400" />
         <span className="text-sm font-medium text-gray-700 dark:text-gray-300 hidden md:block">
-          {session.user.username || session.user.email}
+          {session.user?.username || session.user?.email || 'ユーザー'}
         </span>
       </Menu.Button>
 
@@ -65,7 +65,7 @@ export function UserMenu() {
             <Menu.Item>
               {({ active }: { active: boolean }) => (
                 <Link
-                  href={`/u/${session.user.username}`}
+                  href={`/u/${session.user?.username || session.user?.id}`}
                   className={`${
                     active ? 'bg-gray-100 dark:bg-gray-800' : ''
                   } group flex w-full items-center rounded-md px-2 py-2 text-sm text-gray-900 dark:text-gray-100`}

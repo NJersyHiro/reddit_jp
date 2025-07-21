@@ -22,8 +22,9 @@ export default function CreateThreadPage() {
         perPage: 100,
       });
       
-      if (response && response.data) {
-        setCategories(response.data);
+      // The response interceptor already extracts the data array
+      if (response && Array.isArray(response)) {
+        setCategories(response);
       }
     } catch (error) {
       toast.error('カテゴリの読み込みに失敗しました');

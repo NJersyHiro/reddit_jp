@@ -32,7 +32,7 @@ export default function RootLayout({
 }) {
   return (
     <html lang="ja" suppressHydrationWarning className={`${inter.className} ${notoSansJP.variable}`}>
-      <body className="bg-gray-50 dark:bg-dark-background text-gray-900 dark:text-gray-100">
+      <body className="bg-gray-50 dark:bg-dark-background text-gray-900 dark:text-gray-100" suppressHydrationWarning>
         <Providers>
           <Header />
           <main className="pt-16 pb-20 md:pb-0 min-h-screen">

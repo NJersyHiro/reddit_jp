@@ -38,7 +38,7 @@ export function MobileBottomNav({ className = '' }: MobileBottomNavProps) {
       icon: UserIcon, 
       iconActive: UserIconSolid, 
       label: '自分', 
-      href: session ? `/u/${session.user.username}` : '/login' 
+      href: session ? `/u/${session.user?.username || session.user?.id}` : '/login' 
     },
   ];
 
@@ -51,7 +51,7 @@ export function MobileBottomNav({ className = '' }: MobileBottomNavProps) {
           
           return (
             <Link
-              key={item.href}
+              key={item.label}
               href={item.href}
               className={`flex flex-col items-center justify-center gap-1 relative ${
                 isActive ? 'text-primary-red' : 'text-gray-500'

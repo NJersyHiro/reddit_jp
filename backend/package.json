@@ -9,7 +9,7 @@
     "prisma:generate": "prisma generate",
     "prisma:migrate": "prisma migrate dev",
     "prisma:studio": "prisma studio",
-    "seed": "tsx src/scripts/seed.ts",
+    "seed": "tsx prisma/seed.ts",
     "test": "jest",
     "test:watch": "jest --watch",
     "lint": "eslint src --ext .ts",

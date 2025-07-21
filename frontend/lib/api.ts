@@ -29,7 +29,13 @@ class ApiClient {
 
     // Response interceptor to handle errors
     this.instance.interceptors.response.use(
-      (response) => response.data,
+      (response) => {
+        // Extract the data from the API response wrapper
+        if (response.data?.success && response.data?.data) {
+          return response.data.data;
+        }
+        return response.data;
+      },
       async (error) => {
         if (error.response?.status === 401) {
           // Handle token refresh here
@@ -46,36 +52,48 @@ class ApiClient {
 
   // Auth endpoints
   async register(data: { email: string; password: string; username?: string }): Promise<Session> {
-    return this.instance.post('/auth/register', data);
+    const response = await this.instance.post('/api/v1/auth/register', data);
+    // Transform the response to match the expected Session structure
+    return {
+      user: response.user,
+      accessToken: response.tokens.accessToken,
+      refreshToken: response.tokens.refreshToken,
+    };
   }
 
   async login(data: { email: string; password: string }): Promise<Session> {
-    return this.instance.post('/auth/login', data);
+    const response = await this.instance.post('/api/v1/auth/login', data);
+    // Transform the response to match the expected Session structure
+    return {
+      user: response.user,
+      accessToken: response.tokens.accessToken,
+      refreshToken: response.tokens.refreshToken,
+    };
   }
 
   async logout() {
-    return this.instance.post('/auth/logout');
+    return this.instance.post('/api/v1/auth/logout');
   }
 
   async getMe() {
-    return this.instance.get('/auth/me');
+    return this.instance.get('/api/v1/auth/me');
   }
 
   // Category endpoints
   async getCategories(params?: { sort?: string; page?: number; perPage?: number }): Promise<PaginatedResponse<Category>> {
-    return this.instance.get('/categories', { params });
+    return this.instance.get('/api/v1/categories', { params });
   }
 
   async getCategory(slug: string): Promise<Category> {
-    return this.instance.get(`/categories/${slug}`);
+    return this.instance.get(`/api/v1/categories/${slug}`);
   }
 
   async subscribeToCategory(slug: string) {
-    return this.instance.post(`/categories/${slug}/subscribe`);
+    return this.instance.post(`/api/v1/categories/${slug}/subscribe`);
   }
 
   async unsubscribeFromCategory(slug: string) {
-    return this.instance.delete(`/categories/${slug}/subscribe`);
+    return this.instance.delete(`/api/v1/categories/${slug}/subscribe`);
   }
 
   // Thread endpoints
@@ -86,11 +104,11 @@ class ApiClient {
     page?: number;
     perPage?: number;
   }): Promise<PaginatedResponse<Thread>> {
-    return this.instance.get('/threads', { params });
+    return this.instance.get('/api/v1/threads', { params });
   }
 
   async getThread(id: string): Promise<Thread> {
-    return this.instance.get(`/threads/${id}`);
+    return this.instance.get(`/api/v1/threads/${id}`);
   }
 
   async createThread(data: {
@@ -101,20 +119,20 @@ class ApiClient {
     anonymousName?: string;
     tags?: string[];
   }): Promise<Thread> {
-    return this.instance.post('/threads', data);
+    return this.instance.post('/api/v1/threads', data);
   }
 
   async updateThread(id: string, data: { content?: string; tags?: string[] }) {
-    return this.instance.put(`/threads/${id}`, data);
+    return this.instance.put(`/api/v1/threads/${id}`, data);
   }
 
   async deleteThread(id: string) {
-    return this.instance.delete(`/threads/${id}`);
+    return this.instance.delete(`/api/v1/threads/${id}`);
   }
 
   // Comment endpoints
   async getComments(threadId: string, params?: { sort?: string; depth?: number }): Promise<Comment[]> {
-    return this.instance.get(`/threads/${threadId}/comments`, { params });
+    return this.instance.get(`/api/v1/threads/${threadId}/comments`, { params });
   }
 
   async createComment(data: {
@@ -124,24 +142,24 @@ class ApiClient {
     isAnonymous?: boolean;
     anonymousName?: string;
   }) {
-    return this.instance.post('/comments', data);
+    return this.instance.post('/api/v1/comments', data);
   }
 
   async updateComment(id: string, data: { content: string }) {
-    return this.instance.put(`/comments/${id}`, data);
+    return this.instance.put(`/api/v1/comments/${id}`, data);
   }
 
   async deleteComment(id: string) {
-    return this.instance.delete(`/comments/${id}`);
+    return this.instance.delete(`/api/v1/comments/${id}`);
   }
 
   // Vote endpoints
   async vote(data: { votableId: string; votableType: 'THREAD' | 'COMMENT'; voteValue: 1 | -1 }) {
-    return this.instance.post('/votes', data);
+    return this.instance.post('/api/v1/votes', data);
   }
 
   async removeVote(data: { votableId: string; votableType: 'THREAD' | 'COMMENT' }) {
-    return this.instance.delete('/votes', { data });
+    return this.instance.delete('/api/v1/votes', { data });
   }
   
   async voteThread(threadId: string, voteType: 'up' | 'down') {
@@ -162,19 +180,19 @@ class ApiClient {
 
   // User endpoints
   async getUser(username: string) {
-    return this.instance.get(`/users/${username}`);
+    return this.instance.get(`/api/v1/users/${username}`);
   }
 
   async updateProfile(data: { displayName?: string; bio?: string; preferences?: any }) {
-    return this.instance.put('/users/me', data);
+    return this.instance.put('/api/v1/users/me', data);
   }
   
   async getUserThreads(username: string, params?: { page?: number; perPage?: number }) {
-    return this.instance.get(`/users/${username}/threads`, { params });
+    return this.instance.get(`/api/v1/users/${username}/threads`, { params });
   }
   
   async getUserComments(username: string, params?: { page?: number; perPage?: number }) {
-    return this.instance.get(`/users/${username}/comments`, { params });
+    return this.instance.get(`/api/v1/users/${username}/comments`, { params });
   }
   
   async getCurrentUser() {
@@ -182,7 +200,7 @@ class ApiClient {
   }
   
   async refreshToken(refreshToken: string) {
-    return this.instance.post('/auth/refresh', { refreshToken });
+    return this.instance.post('/api/v1/auth/refresh', { refreshToken });
   }
   
   async search(query: string, params?: {
@@ -191,7 +209,7 @@ class ApiClient {
     page?: number;
     perPage?: number;
   }) {
-    return this.instance.get('/search', {
+    return this.instance.get('/api/v1/search', {
       params: { q: query, ...params },
     });
   }
