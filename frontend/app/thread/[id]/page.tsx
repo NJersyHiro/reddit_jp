@@ -91,10 +91,12 @@ export default function ThreadDetailPage() {
 
   const handleCommentSubmit = () => {
     fetchComments();
+    fetchThread(); // Refresh thread to update comment count
   };
 
   const handleCommentReply = (comment: Comment) => {
     fetchComments();
+    fetchThread(); // Refresh thread to update comment count
   };
 
   const handleCommentEdit = (comment: Comment) => {
@@ -109,6 +111,7 @@ export default function ThreadDetailPage() {
       await api.deleteComment(comment.id);
       toast.success('コメントを削除しました');
       fetchComments();
+      fetchThread(); // Refresh thread to update comment count
     } catch (error) {
       toast.error('コメントの削除に失敗しました');
     }

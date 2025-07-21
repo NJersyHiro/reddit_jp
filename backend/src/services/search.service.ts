@@ -1,6 +1,4 @@
-import { PrismaClient } from '@prisma/client';
-
-const prisma = new PrismaClient();
+import { prisma } from '../config/database';
 
 interface SearchParams {
   query: string;
@@ -18,11 +16,11 @@ export class SearchService {
 
     switch (type) {
       case 'threads':
-        return this.searchThreads(query, categoryId, skip, limit, userId);
+        return this.searchThreads(query, categoryId, skip, limit, page, userId);
       case 'comments':
-        return this.searchComments(query, skip, limit, userId);
+        return this.searchComments(query, skip, limit, page, userId);
       case 'users':
-        return this.searchUsers(query, skip, limit);
+        return this.searchUsers(query, skip, limit, page);
       default:
         throw new Error('Invalid search type');
     }
@@ -33,10 +31,11 @@ export class SearchService {
     categoryId: string | undefined,
     skip: number,
     limit: number,
+    page: number,
     userId?: string
   ) {
     const whereClause: any = {
-      isDeleted: false,
+      isRemoved: false,
       OR: [
         {
           title: {
@@ -86,10 +85,10 @@ export class SearchService {
               comments: true,
             },
           },
-          votes: userId ? {
-            where: { userId },
-            select: { value: true },
-          } : false,
+          // votes: userId ? {
+          //   where: { userId },
+          //   select: { voteValue: true },
+          // } : false,
         },
       }),
       prisma.thread.count({ where: whereClause }),
@@ -98,9 +97,9 @@ export class SearchService {
     const threads = data.map(thread => ({
       ...thread,
       commentCount: thread._count.comments,
-      userVote: thread.votes?.[0]?.value || null,
+      userVote: null, // thread.votes?.[0]?.voteValue || null,
       _count: undefined,
-      votes: undefined,
+      // votes: undefined,
     }));
 
     return {
@@ -118,10 +117,11 @@ export class SearchService {
     query: string,
     skip: number,
     limit: number,
+    page: number,
     userId?: string
   ) {
     const whereClause = {
-      isDeleted: false,
+      isRemoved: false,
       content: {
         contains: query,
         mode: 'insensitive' as const,
@@ -151,10 +151,10 @@ export class SearchService {
               title: true,
             },
           },
-          votes: userId ? {
-            where: { userId },
-            select: { value: true },
-          } : false,
+          // votes: userId ? {
+          //   where: { userId },
+          //   select: { voteValue: true },
+          // } : false,
         },
       }),
       prisma.comment.count({ where: whereClause }),
@@ -162,8 +162,8 @@ export class SearchService {
 
     const comments = data.map(comment => ({
       ...comment,
-      userVote: comment.votes?.[0]?.value || null,
-      votes: undefined,
+      userVote: null, // comment.votes?.[0]?.value || null,
+      // votes: undefined,
     }));
 
     return {
@@ -180,7 +180,8 @@ export class SearchService {
   private async searchUsers(
     query: string,
     skip: number,
-    limit: number
+    limit: number,
+    page: number
   ) {
     const whereClause = {
       OR: [
@@ -205,7 +206,7 @@ export class SearchService {
         skip,
         take: limit,
         orderBy: [
-          { karma: 'desc' },
+          { karmaScore: 'desc' },
           { createdAt: 'desc' },
         ],
         select: {
@@ -213,7 +214,7 @@ export class SearchService {
           username: true,
           displayName: true,
           bio: true,
-          karma: true,
+          karmaScore: true,
           createdAt: true,
           _count: {
             select: {

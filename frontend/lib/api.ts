@@ -31,8 +31,18 @@ class ApiClient {
     this.instance.interceptors.response.use(
       (response) => {
         // Extract the data from the API response wrapper
-        if (response.data?.success && response.data?.data) {
-          return response.data.data;
+        if (response.data?.success) {
+          // For paginated responses, return the full object with data and pagination
+          if (response.data?.pagination) {
+            return {
+              data: response.data.data || [],
+              pagination: response.data.pagination
+            };
+          }
+          // For single item responses, return just the data
+          if (response.data?.data !== undefined) {
+            return response.data.data;
+          }
         }
         return response.data;
       },
