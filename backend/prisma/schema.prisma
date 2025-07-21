@@ -1,0 +1,393 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// User model
+model User {
+  id            String  @id @default(uuid())
+  email         String  @unique
+  emailVerified Boolean @default(false)
+  username      String? @unique
+  displayName   String?
+  passwordHash  String
+
+  // Profile
+  bio       String?
+  avatarUrl String?
+
+  // Stats
+  karmaScore   Int @default(0)
+  postKarma    Int @default(0)
+  commentKarma Int @default(0)
+
+  // Status
+  isActive    Boolean   @default(true)
+  isBanned    Boolean   @default(false)
+  banReason   String?
+  bannedUntil DateTime?
+
+  // Preferences (JSON)
+  preferences Json @default("{}")
+
+  // Timestamps
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  lastLoginAt DateTime?
+
+  // Relations
+  sessions        Session[]
+  threads         Thread[]
+  comments        Comment[]
+  votes           Vote[]
+  reports         Report[]
+  reportedReports Report[]               @relation("ReportedBy")
+  subscriptions   CategorySubscription[]
+  notifications   Notification[]
+  moderatorRoles  Moderator[]
+  moderationLogs  ModerationLog[]
+  threadViews     ThreadView[]
+}
+
+// Session model for authentication
+model Session {
+  id        String   @id @default(uuid())
+  userId    String
+  token     String   @unique
+  ipAddress String?
+  userAgent String?
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  // Relations
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+// Category model (sub-boards)
+model Category {
+  id            String  @id @default(uuid())
+  slug          String  @unique
+  name          String
+  nameJa        String
+  description   String?
+  descriptionJa String?
+  iconUrl       String?
+
+  // Settings
+  isActive        Boolean @default(true)
+  isNsfw          Boolean @default(false)
+  allowsAnonymous Boolean @default(true)
+  minKarmaToPost  Int     @default(0)
+
+  // Stats
+  subscriberCount Int @default(0)
+  threadCount     Int @default(0)
+
+  // Metadata
+  rules Json @default("[]")
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  threads        Thread[]
+  subscriptions  CategorySubscription[]
+  moderators     Moderator[]
+  moderationLogs ModerationLog[]
+}
+
+// Category subscriptions
+model CategorySubscription {
+  userId     String
+  categoryId String
+  createdAt  DateTime @default(now())
+
+  // Relations
+  user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  category Category @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+
+  @@id([userId, categoryId])
+}
+
+// Thread model
+model Thread {
+  id         String  @id @default(uuid())
+  categoryId String
+  userId     String?
+
+  // Content
+  title       String      @db.VarChar(300)
+  content     String?
+  contentType ContentType @default(TEXT)
+  linkUrl     String?
+
+  // Anonymous posting
+  isAnonymous   Boolean @default(false)
+  anonymousName String?
+
+  // Stats
+  score         Int @default(0)
+  upvoteCount   Int @default(0)
+  downvoteCount Int @default(0)
+  commentCount  Int @default(0)
+  viewCount     Int @default(0)
+
+  // Moderation
+  isPinned      Boolean @default(false)
+  isLocked      Boolean @default(false)
+  isRemoved     Boolean @default(false)
+  removedReason String?
+  removedById   String?
+
+  // Metadata
+  tags     String[]
+  metadata Json     @default("{}")
+
+  // Timestamps
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+  lastActivityAt DateTime @default(now())
+
+  // Relations
+  category Category     @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+  user     User?        @relation(fields: [userId], references: [id], onDelete: SetNull)
+  comments Comment[]
+  votes    Vote[]
+  views    ThreadView[]
+
+  // Indexes
+  @@index([categoryId])
+  @@index([userId])
+  @@index([score])
+  @@index([createdAt])
+  @@index([lastActivityAt])
+}
+
+// Comment model
+model Comment {
+  id       String  @id @default(uuid())
+  threadId String
+  parentId String?
+  userId   String?
+
+  // Content
+  content String
+
+  // Anonymous posting
+  isAnonymous   Boolean @default(false)
+  anonymousName String?
+
+  // Hierarchical data
+  path  String // Using string instead of ltree for Prisma compatibility
+  depth Int    @default(0)
+
+  // Stats
+  score         Int @default(0)
+  upvoteCount   Int @default(0)
+  downvoteCount Int @default(0)
+  replyCount    Int @default(0)
+
+  // Moderation
+  isRemoved     Boolean @default(false)
+  removedReason String?
+  removedById   String?
+
+  // Edit tracking
+  isEdited Boolean   @default(false)
+  editedAt DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  thread  Thread    @relation(fields: [threadId], references: [id], onDelete: Cascade)
+  parent  Comment?  @relation("CommentReplies", fields: [parentId], references: [id], onDelete: Cascade)
+  replies Comment[] @relation("CommentReplies")
+  user    User?     @relation(fields: [userId], references: [id], onDelete: SetNull)
+  votes   Vote[]
+
+  // Indexes
+  @@index([threadId])
+  @@index([parentId])
+  @@index([userId])
+  @@index([path])
+  @@index([score])
+  @@index([createdAt])
+}
+
+// Vote model
+model Vote {
+  id          String      @id @default(uuid())
+  userId      String
+  votableId   String
+  votableType VotableType
+  voteValue   Int // 1 or -1
+
+  createdAt DateTime @default(now())
+
+  // Relations
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  Thread    Thread?  @relation(fields: [threadId], references: [id])
+  threadId  String?
+  Comment   Comment? @relation(fields: [commentId], references: [id])
+  commentId String?
+
+  // Unique constraint
+  @@unique([userId, votableId, votableType])
+  @@index([votableId, votableType])
+}
+
+// Report model
+model Report {
+  id           String       @id @default(uuid())
+  reporterId   String
+  reportedId   String
+  reportedType ReportedType
+
+  reason      String  @db.VarChar(50)
+  description String?
+
+  // Status
+  status          ReportStatus @default(PENDING)
+  resolvedById    String?
+  resolvedAt      DateTime?
+  resolutionNotes String?
+
+  createdAt DateTime @default(now())
+
+  // Relations
+  reporter User  @relation(fields: [reporterId], references: [id], onDelete: Cascade)
+  resolver User? @relation("ReportedBy", fields: [resolvedById], references: [id])
+
+  @@index([status])
+  @@index([reportedId, reportedType])
+}
+
+// Moderator model
+model Moderator {
+  id         String @id @default(uuid())
+  userId     String
+  categoryId String
+
+  // Permissions
+  canRemovePosts  Boolean @default(true)
+  canBanUsers     Boolean @default(false)
+  canEditCategory Boolean @default(false)
+
+  appointedById String?
+  createdAt     DateTime @default(now())
+
+  // Relations
+  user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  category Category @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, categoryId])
+}
+
+// Moderation log
+model ModerationLog {
+  id          String  @id @default(uuid())
+  moderatorId String
+  action      String  @db.VarChar(50)
+  targetId    String
+  targetType  String  @db.VarChar(20)
+  categoryId  String?
+
+  reason   String?
+  metadata Json    @default("{}")
+
+  createdAt DateTime @default(now())
+
+  // Relations
+  moderator User      @relation(fields: [moderatorId], references: [id], onDelete: Cascade)
+  category  Category? @relation(fields: [categoryId], references: [id])
+
+  @@index([moderatorId])
+  @@index([targetId, targetType])
+}
+
+// Notification model
+model Notification {
+  id     String @id @default(uuid())
+  userId String
+
+  type  NotificationType
+  title String           @db.VarChar(200)
+  body  String?
+
+  // Related entities
+  relatedId   String?
+  relatedType String? @db.VarChar(20)
+
+  // Status
+  isRead Boolean   @default(false)
+  readAt DateTime?
+
+  // Delivery
+  isEmailSent Boolean @default(false)
+
+  createdAt DateTime @default(now())
+
+  // Relations
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, isRead])
+  @@index([createdAt])
+}
+
+// Thread views tracking
+model ThreadView {
+  id        String   @id @default(uuid())
+  threadId  String
+  userId    String?
+  ipAddress String
+  viewedAt  DateTime @default(now())
+
+  // Relations
+  thread Thread @relation(fields: [threadId], references: [id], onDelete: Cascade)
+  user   User?  @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@unique([threadId, ipAddress, viewedAt])
+  @@index([threadId])
+  @@index([userId])
+}
+
+// Enums
+enum ContentType {
+  TEXT
+  LINK
+  IMAGE
+}
+
+enum VotableType {
+  THREAD
+  COMMENT
+}
+
+enum ReportedType {
+  THREAD
+  COMMENT
+  USER
+}
+
+enum ReportStatus {
+  PENDING
+  REVIEWING
+  RESOLVED
+  DISMISSED
+}
+
+enum NotificationType {
+  REPLY
+  MENTION
+  UPVOTE
+  THREAD_REPLY
+  MODERATOR_ACTION
+}
